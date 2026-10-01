@@ -1,0 +1,5 @@
+Package         Current  Wanted   Latest  Location                     Depended by
+@types/node      26.5.0  26.5.1  22.20.2  node_modules/@types/node     functions
+firebase-admin   14.3.0  14.4.0   14.4.0  node_modules/firebase-admin  functions
+typescript        5.9.3   5.9.3    7.0.2  node_modules/typescript      functions
+zod               4.5.4   4.6.2    4.6.2  node_modules/zod             functions
