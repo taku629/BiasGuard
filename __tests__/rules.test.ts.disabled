@@ -1,0 +1,81 @@
+import {
+  assertFails,
+  assertSucceeds,
+  initializeTestEnvironment,
+  RulesTestEnvironment,
+} from '@firebase/rules-unit-testing';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+
+let testEnv: RulesTestEnvironment;
+
+beforeAll(async () => {
+  // Load the rules file
+  const rules = readFileSync(resolve(__dirname, '../firestore.rules'), 'utf8');
+
+  // Initialize test environment
+  testEnv = await initializeTestEnvironment({
+    projectId: 'demo-biasguard',
+    firestore: {
+      rules,
+    },
+  });
+});
+
+afterAll(async () => {
+  await testEnv?.cleanup();
+});
+
+beforeEach(async () => {
+  await testEnv?.clearFirestore();
+});
+
+describe('Firestore Security Rules', () => {
+  describe('users collection', () => {
+    it('allows a user to read and write their own document', async () => {
+      const alice = testEnv.authenticatedContext('alice');
+      const docRef = alice.firestore().collection('users').doc('alice');
+      await assertSucceeds(docRef.set({ name: 'Alice' }));
+      await assertSucceeds(docRef.get());
+    });
+
+    it('denies a user from reading or writing another user\'s document', async () => {
+      const alice = testEnv.authenticatedContext('alice');
+      const docRef = alice.firestore().collection('users').doc('bob');
+      await assertFails(docRef.set({ name: 'Bob' }));
+      await assertFails(docRef.get());
+    });
+  });
+
+  describe('users sub-collections (e.g. assessmentSessions)', () => {
+    it('allows a user to read and write their own assessmentSessions', async () => {
+      const alice = testEnv.authenticatedContext('alice');
+      const docRef = alice.firestore().collection('users').doc('alice').collection('assessmentSessions').doc('session1');
+      await assertSucceeds(docRef.set({ score: 100 }));
+      await assertSucceeds(docRef.get());
+    });
+
+    it('denies a user from reading or writing another user\'s assessmentSessions', async () => {
+      const alice = testEnv.authenticatedContext('alice');
+      const docRef = alice.firestore().collection('users').doc('bob').collection('assessmentSessions').doc('session1');
+      await assertFails(docRef.set({ score: 100 }));
+      await assertFails(docRef.get());
+    });
+  });
+
+  describe('marketDataCache and marketDataCoverage', () => {
+    it('denies read and write for marketDataCache', async () => {
+      const alice = testEnv.authenticatedContext('alice');
+      const docRef = alice.firestore().collection('marketDataCache').doc('aapl');
+      await assertFails(docRef.set({ price: 150 }));
+      await assertFails(docRef.get());
+    });
+
+    it('denies read and write for marketDataCoverage', async () => {
+      const alice = testEnv.authenticatedContext('alice');
+      const docRef = alice.firestore().collection('marketDataCoverage').doc('nasdaq');
+      await assertFails(docRef.set({ covered: true }));
+      await assertFails(docRef.get());
+    });
+  });
+});
