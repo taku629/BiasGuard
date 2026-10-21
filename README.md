@@ -1,88 +1,162 @@
 # BiasGuard
 
-BiasGuard is an innovative mobile application designed to identify, analyze, and mitigate cognitive and behavioral biases in investment decision-making. Built for Shipathon 2026, it empowers users with actionable insights using an advanced Risk/Behavioral methodology.
+<p align="center">
+  <img src="assets/images/icon.png" width="112" alt="BiasGuard icon" />
+</p>
 
-## Overview & Methodology
+> A behavioral-risk copilot for retail investors — spot the biases behind your portfolio decisions.
 
-### BiasGuard Concept
-In today's fast-paced environment, unconscious biases—such as confirmation bias, overconfidence, and loss aversion—can subtly influence financial decisions. BiasGuard acts as a real-time copilot. By analyzing portfolio decisions and behavioral assessments, it highlights potentially risk-prone behaviors and helps users better understand their own decision-making processes.
+Built for **Shipathon 2026**.
 
-### Risk/Behavioral Methodology
-Our approach is grounded in behavioral economics and risk assessment models. The analysis engine evaluates input against:
-- **Behavioral Assessments:** Using psychological heuristics to identify potential cognitive biases (e.g., anchoring, herd behavior).
-- **Risk Assessment:** Scoring portfolio data on a risk scale to provide a quantifiable metric of decision quality using historical End-of-Day pricing.
+![Expo](https://img.shields.io/badge/Expo-SDK%2057-000020?logo=expo)
+![React Native](https://img.shields.io/badge/React%20Native-0.86-61dafb?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-Auth%20%2B%20Firestore-ffca28?logo=firebase&logoColor=black)
+![Jest](https://img.shields.io/badge/Tested%20with-Jest-c21325?logo=jest&logoColor=white)
+
+BiasGuard turns portfolio and transaction history into two things:
+
+1. **Risk metrics** — volatility, Sharpe ratio, max drawdown and beta, computed from aligned daily prices.
+2. **Behavioral signals** — the disposition effect, loss-realization reluctance, overconfidence calibration, and confirmation / selective exposure.
+
+The result is shown as a radar-style dashboard with plain-language explanations, so a user can see *why* a decision felt risky — not just a single score.
+
+## Features
+
+- **Portfolio management** — multiple portfolios, holdings and transaction history
+- **Risk engine** — daily returns, volatility, Sharpe ratio, max drawdown and beta
+  against a benchmark, with graceful handling of missing or unadjusted prices
+- **Behavioral signals**
+  - Disposition effect (PGR − PLR)
+  - Loss-realization reluctance
+  - Overconfidence calibration
+  - Confirmation bias / selective exposure
+- **Behavioral dashboard** — radar chart with data-sufficiency gating
+- **Assessments & explanations** — guided questions with an explanation screen
+- **Market data** — Firebase Cloud Function proxy for Marketstack EOD / historical prices
+- **Premium** — RevenueCat paywall and entitlement sync
+- **Account deletion** — server-side deletion flow with retries
 
 ## Architecture
 
-BiasGuard leverages a modern, serverless stack. 
-
-### Core Application Flow
-The frontend is built with React Native (Expo) and communicates with Firebase for authentication and database services. Cloud Functions handle the heavy lifting, including interacting with external APIs like Marketstack for financial data.
-
 ```mermaid
-graph TD
-    RN[React Native App] -->|Auth & DB Read/Write| FB[Firebase Auth & Firestore]
-    RN -->|Trigger Analysis| CF[Firebase Cloud Functions]
-    CF -->|Fetch Market Data| MS[Marketstack API]
-    CF -->|Write Results| FB
+flowchart TD
+  RN[Expo / React Native App] -->|Auth + Firestore| FB[(Firebase Auth + Firestore)]
+  RN -->|httpsCallable| CF[Cloud Functions]
+  CF -->|REST| MS[Marketstack API]
+  CF -->|write results| FB
+  RN -->|entitlements| RC[RevenueCat]
+  RC -->|receipts| STORE[App Store / Google Play]
+  RC -.->|customer info| RN
 ```
 
-### Monetization & Subscription Flow
-We use RevenueCat to handle premium subscriptions seamlessly across platforms. The user's identity is linked between Firebase and RevenueCat to ensure consistent access to premium features.
+- Market data is fetched **only** through Cloud Functions, so the Marketstack key never reaches the client.
+- `MARKET_DATA_MODE` switches between the mock provider (development) and the cloud provider (production).
 
-```mermaid
-graph TD
-    FB_Auth[Firebase Auth UID] -->|Link User| RC[RevenueCat]
-    RC -->|Validate Receipt| Apple[Apple App Store]
-    RC -->|Validate Receipt| Google[Google Play Store]
-    RC -.->|Webhook/Sync| FB_DB[Firestore User Document]
-```
+## Tech stack
 
-## Local Setup
+| Layer | Stack |
+|---|---|
+| App | Expo SDK 57, React Native 0.86, Expo Router, TypeScript |
+| Auth / DB | Firebase Auth, Firestore (security rules in `firebase/`) |
+| Backend | Firebase Cloud Functions (Node.js 20), Marketstack |
+| Billing | RevenueCat (`react-native-purchases`) |
+| Charts | `react-native-svg` |
+| Testing | Jest + ts-jest (frontend), Jest (functions) |
+
+## Getting started
 
 ### Prerequisites
+
 - Node.js 20+
-- Expo CLI
-- iOS Simulator or Android Emulator (or a physical device with Expo Go)
+- Expo CLI (`npx expo`)
+- A Firebase project with Auth + Firestore enabled
+- A RevenueCat project (for paywall testing)
 
-### Installation
-1. **Clone & Install Dependencies:**
-   ```bash
-   npm install
-   cd functions && npm install && cd ..
-   ```
+### 1. Install
 
-2. **Environment Configuration:**
-   Copy the example environment file and fill in your keys. **Never commit actual API keys or secrets.**
-   ```bash
-   cp .env.example .env
-   ```
-   *Ensure you have your Firebase config and RevenueCat public keys configured in `.env`. WARNING: Never place backend secrets (e.g., Marketstack API keys or RevenueCat secret keys) in the client-side `.env` file, as they will be exposed.*
+```bash
+npm install
+npm --prefix functions install
+```
 
-3. **Start the Application:**
-   ```bash
-   npx expo start
-   ```
-   Press `i` for iOS Simulator or `a` for Android Emulator.
+### 2. Configure
 
-## Testing & Validation
-- **Frontend Tests:** Currently no automated frontend tests configured in `package.json`. Use `npx jest` if configured later.
-- **Backend Tests:** `cd functions && npm test`
-- **Release Validation:** Run `node ./scripts/validate-release.js` to ensure the build is ready, tests pass, and no secrets are committed.
+```bash
+cp .env.example .env
+```
 
-## Integrations
+Fill in the Firebase web app config and RevenueCat public SDK keys:
 
-- **Firebase:** Handles user authentication (email/password, social), stores analysis history in Firestore, and hosts serverless Cloud Functions.
-- **RevenueCat:** Manages the paywall, subscription states, and cross-platform entitlements using the `react-native-purchases` SDK.
-- **Marketstack:** Provides End-of-Day (EOD) and historical market data to contextualize financial risk assessments within the behavioral engine.
+```bash
+EXPO_PUBLIC_FIREBASE_API_KEY=
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+EXPO_PUBLIC_FIREBASE_APP_ID=
 
-## Directory Structure
-- `app/`: Expo Router screen definitions.
-- `src/`: Core application logic (config, types, schema, repositories).
-- `functions/`: Firebase Cloud Functions for backend processing.
-- `scripts/`: Utility scripts (e.g., release validation).
-- `docs/`: Runbooks, audit logs, and testing documentation.
-- `firebase/`: Firestore Security Rules and Indexes.
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY=
+EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY=
+```
 
----
-*Developed for Shipathon 2026.*
+Server-side secrets (Marketstack key, RevenueCat secret) belong in Cloud Functions
+config — never in the client `.env`.
+
+### 3. Run
+
+```bash
+npx expo start
+# i = iOS simulator, a = Android emulator, w = web
+```
+
+### 4. Deploy Firebase
+
+```bash
+firebase deploy --only firestore:rules,functions
+```
+
+`firebase.json` runs `npm --prefix functions run build` before deploying functions,
+so the compiled `functions/lib/` output is generated at deploy time (not committed).
+
+## Testing
+
+```bash
+npx jest                  # frontend: risk, behavior engines, schema, gates
+npm --prefix functions test   # backend: market data, deletion
+npm run lint              # expo lint
+```
+
+## Project structure
+
+```
+src/
+├── app/                  # Expo Router screens
+│   ├── (auth)/           # login / signup
+│   ├── (app)/            # dashboard, portfolios, behavior, paywall
+│   └── _layout.tsx
+├── components/
+│   ├── auth/             # shared auth screen
+│   └── holdings/         # shared new/edit holding form
+├── services/
+│   ├── risk/             # volatility, Sharpe, drawdown, beta
+│   ├── behavior/         # disposition, overconfidence, selective exposure
+│   └── marketData/       # mock + cloud providers
+├── repositories/         # Firestore data access
+├── features/behavior/    # signal → dashboard mapping
+├── types/                # domain models
+└── config/               # Firebase, env
+
+functions/
+├── src/                  # Cloud Functions (TypeScript)
+└── __tests__/            # backend tests
+
+__tests__/                # frontend unit tests
+firebase/                 # Firestore rules & indexes
+```
+
+## Security notes
+
+- Firestore access is restricted to the authenticated owner via security rules.
+- The Marketstack API key is only used inside Cloud Functions.
+- The client `EXPO_PUBLIC_*` values are public by design; backend secrets stay server-side.
