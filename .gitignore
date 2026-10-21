@@ -36,6 +36,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# compiled cloud functions
+functions/lib/
+
 example
 
 # generated native folders
